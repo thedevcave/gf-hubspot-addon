@@ -10,8 +10,8 @@ class GFHubspotAddOn extends GFAddOn {
 	protected $_slug = 'hubspotaddon';
 	protected $_path = 'hubspotaddon/hubspotaddon.php';
 	protected $_full_path = __FILE__;
-	protected $_title = 'Gravity Forms Hubspot Add-On Settings';
-	protected $_short_title = 'Hubspot Add-On';
+	protected $_title = 'Gravity Forms Hubspot Form Submission Settings';
+	protected $_short_title = 'Hubspot Form Submission';
 
 	private static $_instance = null;
 
@@ -33,10 +33,8 @@ class GFHubspotAddOn extends GFAddOn {
 	 */
 	public function init() {
 		parent::init();
-		add_filter( 'gform_submit_button', array( $this, 'form_submit_button' ), 10, 2 );
 		add_action( 'gform_after_submission', array( $this, 'after_submission' ), 10, 2 );
 		add_action( 'rest_api_init', array( $this, 'register_api_endpoints' ) );
-		// add_filter( 'gform_addon_feed_settings_fields', array( $this, 'gf_hs_addon_field_maps' ), 10, 2 );
 		add_action( 'gform_field_map_choices', array( $this, 'gf_hs_addon_field_maps' ), 10, 4 );
 	}
 	
@@ -88,7 +86,7 @@ class GFHubspotAddOn extends GFAddOn {
 	public function plugin_settings_fields() {
 		return array(
 			array(
-				'title'  => esc_html__( 'Hubspot Add-On Settings', 'hubspotaddon' ),
+				'title'  => esc_html__( 'Hubspot Form Submission Settings', 'hubspotaddon' ),
 				'fields' => array(
 					array(
 						'name'              => 'mytextbox',
@@ -160,56 +158,6 @@ class GFHubspotAddOn extends GFAddOn {
 	}
 
 	/**
-	 * Modify the options for field mapping 
-	 *
-	 * @param array $field The field properties.
-	 * @param bool|true $echo Should the setting markup be echoed.
-	 */
-	public function gf_hs_addon_field_maps( $fields, $form_id, $field_type, $exclude_field_types ) {
-	 
-			// foreach($fields as $key => $field):
-			// 	if($field['name'] == 'hs_field_map'):
-			// 		include GF_HUBSPOT_ADDON_DIR . '/lib/actions/getForms.php';
-			// 		$settings = $this->get_form_settings( $form_id );
-			// 		$hs_form = explode("_", $settings['hs_form']);
-			// 		$hs_form_key = $hs_form[0];
-			// 		
-			// 		$field['field_map'] = array( array ( 'label' => 'Select Hubspot Form Field', 'value' => '' ) );
-			// 		
-			// 		foreach($forms[$hs_form_key]->formFieldGroups as $field_group):
-			// 			// echo "<pre>"; print_r($field_group); echo "</pre>";
-			// 			$field['field_map'][] = array(
-			// 				'label' => $field_group->fields[0]->label,
-			// 				'value' => $field_group->fields[0]->name
-			// 			);
-			// 		endforeach;
-			// 	endif;
-			// endforeach;
-			print_r($fields); die();
-	 
-	 		$fields[] = array( 'label' => 'New Choice', 'value' => 'new choice' );
-			return $fields;
-	}
-
-	/**
-	 * Define the markup for the my_custom_field_type type field.
-	 *
-	 * @param array $field The field properties.
-	 * @param bool|true $echo Should the setting markup be echoed.
-	 */
-	public function settings_my_custom_field_type( $field, $echo = true ) {
-		echo '<div>' . esc_html__( 'My custom field contains a few settings:', 'hubspotaddon' ) . '</div>';
-
-		// get the text field settings from the main field and then render the text field
-		$text_field = $field['args']['text'];
-		$this->settings_text( $text_field );
-
-		// get the checkbox field settings from the main field and then render the checkbox field
-		$checkbox_field = $field['args']['checkbox'];
-		$this->settings_checkbox( $checkbox_field );
-	}
-
-	/**
 	 * Performing a custom action at the end of the form submission process.
 	 *
 	 * @param array $entry The entry currently being processed.
@@ -217,16 +165,100 @@ class GFHubspotAddOn extends GFAddOn {
 	 */
 	public function after_submission( $entry, $form ) {
 
-		// Evaluate the rules configured for the custom_logic setting.
-		$result = $this->is_custom_logic_met( $form, $entry );
+		// create the form field mappings for hubspot 
+		$hs_data_json = $this->prepare_hubspot_submission_data($form['hubspotaddon'], $entry);
+		
+		// send hs data to hubspot form submission 
+		$result = $this->send_submission_to_hubspot( $form['hubspotaddon']['hs_form'], $hs_data_json );
 
-		if ( $result ) {
+		if ( $result->status && $result->status == "error" ) {
 			// Do something awesome because the rules were met.
+			// $myfile = fopen( GF_HUBSPOT_ADDON_DIR . "/logs/hubspot-error-logs.txt", "a" ) or die( "Unable to open file!" );
+			$logFile = GF_HUBSPOT_ADDON_DIR . "/logs/hubspot-error-logs.txt";
+			foreach($result->errors as $error):
+				$txt = '['.date( 'm-d-Y h:i:sa' ).'] - GF Form ID: '.$form['id'].' | Hubspot Error: '.$error->errorType.' | '.$error->message."\n";
+			endforeach;
+			$currentLog = file_get_contents($logFile);
+			file_put_contents($logFile, $txt.$currentLog);
+			// fwrite($myfile, $txt);
+			// fclose($myfile);
 		}
 	}
 
 
 	// # HELPERS -------------------------------------------------------------------------------------------------------
+		
+	/**
+	 * Take the field mapping from the settings of the form and build the Hubspot form data array of the values
+	 *
+	 * @param array $hubspot_settings The settings array from the form object.
+	 * @param array $entry The entry array from the form submission.
+	 *
+	 * @return json object
+	 */
+	public function prepare_hubspot_submission_data( $hubspot_settings, $entry ){
+		
+		$hubspotutk		= $_COOKIE['hubspotutk']; //grab the cookie from the visitors browser.
+		$ip_addr			= $_SERVER['REMOTE_ADDR']; //IP address too.
+		$page_uri			= "https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+		$extra_fields = array();
+		
+		$hs_data = array(
+			"fields" => array(),
+			"context" => array(
+				"hutk" => $hubspotutk,
+				"ipAddress" => $ip_addr,
+				"pageUri" => $page_uri,
+				"pageName" => get_the_title()
+			)
+		);
+		
+		foreach($hubspot_settings['hs_field_map'] as $hs_field_map):
+			$hs_data['fields'][] = array(
+				"name" => $hs_field_map['key'],
+				"value" => $entry[$hs_field_map['value']]
+			);
+		endforeach;
+		
+		return $hs_data;
+		// return json_encode($hs_data);
+		
+	}
+	
+	/**
+	 * Take the field mapping from the settings of the form and build the Hubspot form data array of the values
+	 *
+	 * @param array $hubspot_settings The settings array from the form object.
+	 * @param array $entry The entry array from the form submission.
+	 *
+	 * @return json object
+	 */
+	public function send_submission_to_hubspot( $hubspot_form, $hs_data_json ){
+		
+		include GF_HUBSPOT_ADDON_DIR . '/lib/actions/getAccount.php';
+		// $access_token = OAuth2Helper::getAccessToken();
+		$hs_form_id = substr($hubspot_form, 1, 1) == "_" ? substr($hubspot_form, 2) : $hubspot_form;
+		// $endpoint = "https://api.hsforms.com/submissions/v3/integration/secure/submit/".$portal_id."/".$hs_form_id;
+		
+		include GF_HUBSPOT_ADDON_DIR . '/lib/actions/submitForm.php';
+		
+		// $ch = @curl_init();
+		// @curl_setopt($ch, CURLOPT_POST, true);
+		// @curl_setopt($ch, CURLOPT_POSTFIELDS, $hs_data_json);
+		// @curl_setopt($ch, CURLOPT_URL, $endpoint);
+		// @curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+		// 	'Authorization: Bearer ' . $access_token,
+		// 	'Content-Type: application/json'
+		// ));
+		// @curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		// $response    = @curl_exec($ch); //Log the response from HubSpot as needed.
+		// $status_code = @curl_getinfo($ch, CURLINFO_HTTP_CODE); //Log the response status code
+		// @curl_close($ch);
+		
+		// echo "<pre>"; print_r($submit_response); die();		
+		return $submit_response;
+		
+	}
 
 	/**
 	 * The feedback callback for the 'mytextbox' setting on the plugin settings page and the 'mytext' setting on the form settings page.
