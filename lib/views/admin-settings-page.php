@@ -22,6 +22,7 @@ $oauth = new Helpers\OAuth2Helper;
 	<?php else: ?>
 		<?php include GF_HUBSPOT_ADDON_DIR . '/lib/actions/getForms.php' ?>
 		<p>Thank you for authorizing the GF to Hubspot Add-On. You now have access to sync form submissions from Gravity Forms to any of your Hubspot forms.</p>
+		<p>To avoid any errors, please be sure that your Gravity Form fields all match up to a Hubspot field, including making sure required fields are marked as so on both systems.</p>
 		<p>If you are having any issues with form submissions not going through you can return to this page and check the Error Logs below. The most recent errors will always be at the top of the file.</p>
 		<p>&nbsp;</p>
 		<hr />
