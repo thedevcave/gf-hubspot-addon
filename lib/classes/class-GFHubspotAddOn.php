@@ -173,7 +173,7 @@ class GFHubspotAddOn extends GFAddOn {
 		// send hs data to hubspot form submission 
 		$result = $this->send_submission_to_hubspot( $form['hubspotaddon']['hs_form'], $hs_data );
 
-		if ( $result->status && $result->status == "error" ) {
+		if ( isset($result->status) && $result->status == "error" ) {
 			// Do something awesome because the rules were met.
 			// $myfile = fopen( GF_HUBSPOT_ADDON_DIR . "/logs/hubspot-error-logs.txt", "a" ) or die( "Unable to open file!" );
 			$logFile = GF_HUBSPOT_ADDON_DIR . "/logs/hubspot-error-logs.txt";
@@ -215,23 +215,49 @@ class GFHubspotAddOn extends GFAddOn {
 			)
 		);
 		
+		// echo "<pre>"; print_r($entry); //die();
+		// 
+		// foreach($entry as $key => $value):
+		// 	if(is_numeric($key)):
+		// 		print_r(GFAPI::get_field($entry['form_id'], $key));
+		// 	endif;
+		// endforeach;
+		// 
+		// die();
+		
 		foreach($hubspot_settings['hs_field_map'] as $hs_field_map):
-			if(strpos($hs_field_map['value'], ".") !== false):
+			$gf_field = GFAPI::get_field($entry['form_id'], $hs_field_map['value']);
+			$entry_value = $entry[$hs_field_map['value']];
+			
+			if($gf_field->type == "consent"):
 				if($entry[$hs_field_map['value']] == 1):
 					$entry_value = true;
 				elseif($entry[$hs_field_map['value']] == 0):
 					$entry_value = false;
-				else:
-					$entry_value = $entry[$hs_field_map['value']];
 				endif;
-			else:
-				$entry_value = $entry[$hs_field_map['value']];
+			elseif($gf_field->type == "fileupload"):
+				$files_entry = json_decode($entry[$hs_field_map['value']]);
+				$entry_value = is_array($files_entry) ? implode("\r\n\r\n", $files_entry) : $files_entry;
+			elseif($gf_field->type == "checkbox"):
+				$entry_value = "";
+				for($i = 1; $i <= 50; $i++){
+					if(isset($entry[$hs_field_map['value'].'.'.$i])):
+						if(!empty($entry[$hs_field_map['value'].'.'.$i])):
+							$entry_value .= $entry[$hs_field_map['value'].'.'.$i].";";
+						endif;
+					else:
+						break;
+					endif;
+				}
 			endif;
+			
 			$hs_data['fields'][] = array(
 				"name" => $hs_field_map['key'],
 				"value" => $entry_value
 			);
 		endforeach;
+		
+		// echo "<pre>"; print_r($hs_data); die();
 		
 		return $hs_data;
 		// return json_encode($hs_data);
