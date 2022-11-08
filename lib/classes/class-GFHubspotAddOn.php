@@ -168,10 +168,10 @@ class GFHubspotAddOn extends GFAddOn {
 	public function after_submission( $entry, $form ) {
 
 		// create the form field mappings for hubspot 
-		$hs_data_json = $this->prepare_hubspot_submission_data($form['hubspotaddon'], $entry);
+		$hs_data = $this->prepare_hubspot_submission_data($form['hubspotaddon'], $entry);
 		
 		// send hs data to hubspot form submission 
-		$result = $this->send_submission_to_hubspot( $form['hubspotaddon']['hs_form'], $hs_data_json );
+		$result = $this->send_submission_to_hubspot( $form['hubspotaddon']['hs_form'], $hs_data );
 
 		if ( $result->status && $result->status == "error" ) {
 			// Do something awesome because the rules were met.
@@ -216,9 +216,20 @@ class GFHubspotAddOn extends GFAddOn {
 		);
 		
 		foreach($hubspot_settings['hs_field_map'] as $hs_field_map):
+			if(strpos($hs_field_map['value'], ".") !== false):
+				if($entry[$hs_field_map['value']] == 1):
+					$entry_value = true;
+				elseif($entry[$hs_field_map['value']] == 0):
+					$entry_value = false;
+				else:
+					$entry_value = $entry[$hs_field_map['value']];
+				endif;
+			else:
+				$entry_value = $entry[$hs_field_map['value']];
+			endif;
 			$hs_data['fields'][] = array(
 				"name" => $hs_field_map['key'],
-				"value" => $entry[$hs_field_map['value']]
+				"value" => $entry_value
 			);
 		endforeach;
 		
