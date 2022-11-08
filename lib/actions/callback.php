@@ -14,5 +14,5 @@ $response = HubspotClientHelper::getOAuth2Resource()->getTokensByCode(
 if (HubspotClientHelper::isResponseSuccessful($response)) {
 		OAuth2Helper::saveTokenResponse($response->toArray());
 
-		echo "<script>window.close();</script>";
+		echo "You may now close this window and return to your WordPress Admin screen.";
 }

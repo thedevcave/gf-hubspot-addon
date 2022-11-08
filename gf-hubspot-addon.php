@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms - Hubspot Form Submission Add-On
 Plugin URI: http://www.thedevcave.com
 Description: Add-on for Gravity Forms allowing you to submit any Gravity Form to a duplicate form in Hubspot to automatically sync your submissions.
-Version: 1.0
+Version: 1.1
 Author: TheDevCave
 Author URI: http://www.thedevcave.com
 
@@ -25,7 +25,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-define( 'GF_HUBSPOT_ADDON_VERSION', '1.0' );
+define( 'GF_HUBSPOT_ADDON_VERSION', '1.1' );
 define( 'GF_HUBSPOT_ADDON_DIR', __DIR__ );
 define( 'GF_HUBSPOT_ADDON_URL', plugin_dir_url( __FILE__ ) );
  

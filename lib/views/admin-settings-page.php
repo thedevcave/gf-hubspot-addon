@@ -10,7 +10,7 @@ $oauth = new Helpers\OAuth2Helper;
 	// echo time()."<br><br>".print_r(get_option( 'gf_hs_addon_token' ), true);
 	?>
 	<?php if(!$oauth->isAuthenticated()): ?>
-		<button onclick="window.open('<?php echo $oauth->getAuthUrl(); ?>', '', 'width=800,height=600')">Authorize GF to Hubspot Add-on</button>
+		<button onclick="window.open('<?php echo $oauth->getAuthUrl(); ?>', '', 'width=800,height=600')" style="-webkit-appearance: none; background-color: #ff7a59; border: 1px  solid #ff7a59; color: #fff; font-size: 14px; line-height: 16px; padding: 11px 24px; border-radius: 3px; cursor: pointer; outline: none;">Authorize GF to Hubspot Add-on</button>
 		<script>
 				window.setInterval('refresh()', 10000); 
 		
