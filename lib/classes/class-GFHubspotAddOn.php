@@ -117,7 +117,7 @@ class GFHubspotAddOn extends GFAddOn {
 				'value' => $key . '_' . $form->guid
 			);
 		endforeach;
-		
+				
 		$field_map_options = array( array ( 'label' => 'Select Hubspot Form Field', 'value' => '' ) );
 		if(!empty($settings['hs_form'])):
 			$hs_form = explode("_", $settings['hs_form']);
@@ -125,10 +125,12 @@ class GFHubspotAddOn extends GFAddOn {
 			
 			foreach($forms[$hs_form_key]->formFieldGroups as $field_group):
 				// echo "<pre>"; print_r($field_group); echo "</pre>";
-				$field_map_options[] = array(
-					'label' => $field_group->fields[0]->label,
-					'value' => $field_group->fields[0]->name
-				);
+				foreach($field_group->fields as $field):
+					$field_map_options[] = array(
+						'label' => $field->label,
+						'value' => $field->name
+					);
+				endforeach;
 			endforeach;
 			// echo "<pre>"; print_r($forms[$hs_form_key]); echo "</pre>";
 		endif;
